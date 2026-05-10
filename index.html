@@ -1,11 +1,458 @@
 <!DOCTYPE html>
-<html lang="ja">
-<head>
-  <meta charset="UTF-8">
-  <title>ChocoMin-wk</title>
-</head>
-<body>
-  <h1>ChocoMin-wk のページ</h1>
-  <p>GitHub Pagesで公開しています。</p>
-</body>
+<html>
+    <head>
+        <meta charset="utf-8" />
+        <title>冒険者証ジェネレータ</title>
+        <link rel="stylesheet" href="farbtastic.css" />
+        <link rel="stylesheet" href="cc.css" />
+        <script src="jquery-3.7.1.min.js"></script>
+        <script src="farbtastic.js"></script>
+        <script src="cc.js"></script>
+        <script src="html2canvas.min.js"></script>
+        <script>
+            document.addEventListener('DOMContentLoaded', function () {
+                const input = document.getElementById('fileInput');
+                const photo = document.getElementById('photo');
+
+                var naturalWidth = 0, naturalHeight = 0;
+                var imgX = 0, imgY = 0, imgW = 0, imgH = 0;
+                var isDragging = false;
+                var dragStartX, dragStartY;
+
+                function clamp(val, min, max) {
+                    return Math.max(min, Math.min(max, val));
+                }
+
+                function applyTransform() {
+                    photo.style.backgroundSize = imgW + 'px ' + imgH + 'px';
+                    photo.style.backgroundPosition = imgX + 'px ' + imgY + 'px';
+                }
+
+                function coverSize() {
+                    const cw = photo.offsetWidth, ch = photo.offsetHeight;
+                    const ia = naturalWidth / naturalHeight, ca = cw / ch;
+                    if (ia > ca) { imgH = ch; imgW = ch * ia; }
+                    else         { imgW = cw; imgH = cw / ia; }
+                }
+
+                function clampPos() {
+                    const cw = photo.offsetWidth, ch = photo.offsetHeight;
+                    imgX = clamp(imgX, cw - imgW, 0);
+                    imgY = clamp(imgY, ch - imgH, 0);
+                }
+
+                input.addEventListener('change', function () {
+                    const file = this.files[0];
+                    if (!file) return;
+                    const reader = new FileReader();
+                    reader.onload = function (e) {
+                        const img = new Image();
+                        img.onload = function () {
+                            naturalWidth = img.naturalWidth;
+                            naturalHeight = img.naturalHeight;
+                            coverSize();
+                            imgX = (photo.offsetWidth  - imgW) / 2;
+                            imgY = (photo.offsetHeight - imgH) / 2;
+                            photo.style.backgroundImage  = `url(${e.target.result})`;
+                            photo.style.backgroundRepeat = 'no-repeat';
+                            applyTransform();
+                            photo.style.cursor = 'grab';
+                        };
+                        img.src = e.target.result;
+                    };
+                    reader.readAsDataURL(file);
+                });
+
+                photo.addEventListener('mousedown', function (e) {
+                    if (!naturalWidth) return;
+                    isDragging = true;
+                    dragStartX = e.clientX;
+                    dragStartY = e.clientY;
+                    photo.style.cursor = 'grabbing';
+                    e.preventDefault();
+                });
+
+                document.addEventListener('mousemove', function (e) {
+                    if (!isDragging) return;
+                    imgX += e.clientX - dragStartX;
+                    imgY += e.clientY - dragStartY;
+                    dragStartX = e.clientX;
+                    dragStartY = e.clientY;
+                    clampPos();
+                    applyTransform();
+                });
+
+                document.addEventListener('mouseup', function () {
+                    if (!isDragging) return;
+                    isDragging = false;
+                    if (naturalWidth) photo.style.cursor = 'grab';
+                });
+
+                photo.addEventListener('wheel', function (e) {
+                    if (!naturalWidth) return;
+                    e.preventDefault();
+
+                    const factor = e.deltaY < 0 ? 1.05 : 1 / 1.05;
+                    const newW = imgW * factor;
+                    const newH = imgH * factor;
+
+                    // coverSize 以下にはズームアウトしない
+                    const cw = photo.offsetWidth, ch = photo.offsetHeight;
+                    const ia = naturalWidth / naturalHeight, ca = cw / ch;
+                    const minW = ia > ca ? ch * ia : cw;
+                    const minH = ia > ca ? ch      : cw / ia;
+                    if (newW < minW || newH < minH) return;
+
+                    // マウス位置を固定してズーム
+                    const rect = photo.getBoundingClientRect();
+                    const mx = e.clientX - rect.left;
+                    const my = e.clientY - rect.top;
+                    imgX = mx - (mx - imgX) * factor;
+                    imgY = my - (my - imgY) * factor;
+                    imgW = newW;
+                    imgH = newH;
+
+                    clampPos();
+                    applyTransform();
+                }, { passive: false });
+            });
+        </script>
+    </head>
+    <body>
+        <div id="wrapper">
+            <div id="card-wrap">
+                <div id="card">
+                    <div id="box">
+                        <div id="border_head"></div>
+                        <div id="border_body"></div>
+                        <div id="border_label_head"></div>
+                        <div id="border_label_foot"></div>
+                        <div id="name">
+                            <span class="label">氏名</span><span class="value"></span>
+                        </div>
+                        <div id="birthdate">
+                            <span class="value"></span>
+                        </div>
+                        <div id="address1">
+                            <span class="label">本籍</span><span class="value"></span>
+                        </div>
+                        <div id="address2">
+                            <span class="label">住所</span><span class="value"></span>
+                        </div>
+                        <div id="issue">
+                            <span class="label">交付</span><span class="value"></span>
+                        </div>
+                        <div id="limitation">
+                            <span class="value"></span>
+                        </div>
+                        <div id="licensecode">
+                            <span class="label"><em></em></span><span class="value"></span>
+                        </div>
+                        <div id="date1">
+                            <span class="label"><em></em></span><span class="value"></span>
+                        </div>
+                        <div id="date2">
+                            <span class="label"><em></em></span><span class="value"></span>
+                        </div>
+                        <div id="date3">
+                            <span class="label"><em></em></span><span class="value"></span>
+                        </div>
+                        <div id="lic_class">
+                            <table>
+                                <tbody>
+                                    <tr>
+                                        <th rowspan="2">
+                                            <pre class="label">種
+    
+    類</pre>
+                                        </th>
+                                        <td><span class="cell-inner"><span class="job">ナ</span><span class="lvl-wrap"><span class="lvl"></span></span></span></td>
+                                        <td><span class="cell-inner"><span class="job">暗</span><span class="lvl-wrap"><span class="lvl"></span></span></span></td>
+                                        <td><span class="cell-inner"><span class="job">白</span><span class="lvl-wrap"><span class="lvl"></span></span></span></td>
+                                        <td><span class="cell-inner"><span class="job">占</span><span class="lvl-wrap"><span class="lvl"></span></span></span></td>
+                                        <td><span class="cell-inner"><span class="job">モ</span><span class="lvl-wrap"><span class="lvl"></span></span></span></td>
+                                        <td><span class="cell-inner"><span class="job">忍</span><span class="lvl-wrap"><span class="lvl"></span></span></span></td>
+                                        <td><span class="cell-inner"><span class="job">リ</span><span class="lvl-wrap"><span class="lvl"></span></span></span></td>
+                                        <td><span class="cell-inner"><span class="job">魔</span><span class="lvl-wrap"><span class="lvl"></span></span></span></td>
+                                        <td><span class="cell-inner"><span class="job">機</span><span class="lvl-wrap"><span class="lvl"></span></span></span></td>
+                                        <td><span class="cell-inner"><span class="job">黒</span><span class="lvl-wrap"><span class="lvl"></span></span></span></td>
+                                        <td><span class="cell-inner"><span class="job">赤</span><span class="lvl-wrap"><span class="lvl"></span></span></span></td>
+                                        <td><span class="cell-inner"><span class="job">青</span><span class="lvl-wrap"><span class="lvl"></span></span></span></td>
+                                        <td><span class="cell-inner"><span class="job"></span><span class="lvl-wrap"><span class="lvl"></span></span></span></td>
+                                    </tr>
+                                    <tr>
+                                        <td><span class="cell-inner"><span class="job">戦</span><span class="lvl-wrap"><span class="lvl"></span></span></span></td>
+                                        <td><span class="cell-inner"><span class="job">ガ</span><span class="lvl-wrap"><span class="lvl"></span></span></span></td>
+                                        <td><span class="cell-inner"><span class="job">学</span><span class="lvl-wrap"><span class="lvl"></span></span></span></td>
+                                        <td><span class="cell-inner"><span class="job">賢</span><span class="lvl-wrap"><span class="lvl"></span></span></span></td>
+                                        <td><span class="cell-inner"><span class="job">竜</span><span class="lvl-wrap"><span class="lvl"></span></span></span></td>
+                                        <td><span class="cell-inner"><span class="job">侍</span><span class="lvl-wrap"><span class="lvl"></span></span></span></td>
+                                        <td><span class="cell-inner"><span class="job">ヴ</span><span class="lvl-wrap"><span class="lvl"></span></span></span></td>
+                                        <td><span class="cell-inner"><span class="job">詩</span><span class="lvl-wrap"><span class="lvl"></span></span></span></td>
+                                        <td><span class="cell-inner"><span class="job">踊</span><span class="lvl-wrap"><span class="lvl"></span></span></span></td>
+                                        <td><span class="cell-inner"><span class="job">召</span><span class="lvl-wrap"><span class="lvl"></span></span></span></td>
+                                        <td><span class="cell-inner"><span class="job">ピ</span><span class="lvl-wrap"><span class="lvl"></span></span></span></td>
+                                        <td><span class="cell-inner"><span class="job"></span><span class="lvl-wrap"><span class="lvl"></span></span></span></td>
+                                        <td><span class="cell-inner"><span class="job"></span><span class="lvl-wrap"><span class="lvl"></span></span></span></td>
+                                    </tr>
+                                </tbody>
+                            </table>
+                        </div>
+                        <div id="condition">
+                            <pre class="label">免許の
+条件等</pre><pre class="value"></pre>
+                        </div>
+                        <div id="grade">
+                            <span class="value">優良</span>
+                        </div>
+                        <div id="photo">
+                        </div>
+                        <div id="logo">
+                            <pre class="value">冒
+険
+者
+証</pre>
+                        </div>
+                        <div id="commission">
+                            <pre class="value"></pre>
+                        </div>
+                        <div id="signet">
+                            <img src="" alt="" />
+                        </div>
+                        <div id="cat_labels">
+                            <div class="cat_label"><span>番号</span></div>
+                            <div class="cat_label_slm"><span>二･小･原</span></div>
+                            <div class="cat_label"><span>他</span></div>
+                            <div class="cat_label"><span>二種</span></div>
+                        </div>
+                    </div>
+                    <div id="copyright">© SQUARE ENIX</div>
+                </div>
+                <div id="card-actions">
+                    <button type="button" id="saveBtn">画像として保存</button>
+                </div>
+            </div>
+            <form id="form" action="#">
+                <fieldset>
+                    <legend>冒険者証情報</legend>
+                    <dl>
+                        <dt>写真</dt>
+                        <dd class="photo-dd"><input type="file" id="fileInput" accept="image/*"><span class="hint">表示された画像はドラッグ、ホイールで微調整できます。</span></dd>
+                    </dl>
+                    <dl class="name">
+                        <dt>氏名</dt>
+                        <dd>
+                            <input type="text" value="Meteor Survivor  " class="name-input" />
+                            <span class="hint">文字の間隔はスペースで調整してください。</span>
+                        </dd>
+                    </dl>
+                    <dl class="birthdate">
+                        <dt>生年月日</dt>
+                        <dd>
+                            <select class="birthdate-month">
+                                <option selected>星01月</option>
+                                <option>霊01月</option>
+                                <option>星02月</option>
+                                <option>霊02月</option>
+                                <option>星03月</option>
+                                <option>霊03月</option>
+                                <option>星04月</option>
+                                <option>霊04月</option>
+                                <option>星05月</option>
+                                <option>霊05月</option>
+                                <option>星06月</option>
+                                <option>霊06月</option>
+                            </select>
+                            <input type="text" class="birthdate-day" value="01" style="width:3em;" />
+                            日生
+                        </dd>
+                    </dl>
+                    <dl class="address1">
+                        <dt>本籍</dt>
+                        <dd><input type="text" value="リムサ・ロミンサ 下甲板層（ 9.0 , 11.0 ）" /></dd>
+                    </dl>
+                    <dl class="address2">
+                        <dt>住所</dt>
+                        <dd><input type="text" value="ミスト・ヴィレッジ 第1区 1番地" /></dd>
+                    </dl>
+                    <dl class="issue">
+                        <dt>交付日</dt>
+                        <dd><input type="text" value="第七星暦???年 霊01月01日　99999" /></dd>
+                    </dl>
+                    <dl class="limitation">
+                        <dt>有効期限</dt>
+                        <dd><input type="text" value="ダラガブ落下まで有効" /></dd>
+                    </dl>
+                    <dl class="licensecode">
+                        <dt>番号</dt>
+                        <dd><input type="text" value="999999999999" /></dd>
+                    </dl>
+                    <dl class="date1">
+                        <dt>取得日１</dt>
+                        <dd><input type="text" value="第七星暦???年星01月01日" /></dd>
+                    </dl>
+                    <dl class="date2">
+                        <dt>取得日２</dt>
+                        <dd><input type="text" value="第七星暦???年星01月01日" /></dd>
+                    </dl>
+                    <dl class="date3">
+                        <dt>取得日３</dt>
+                        <dd><input type="text" value="第七星暦???年星01月01日" /></dd>
+                    </dl>
+                    <dl class="commission">
+                        <dt>冒険者ギルド</dt>
+                        <dd>
+                            <select class="commission-select">
+                                <option selected>リムサ・ロミンサ</option>
+                                <option>グリダニア</option>
+                                <option>ウルダハ</option>
+                            </select>
+                        </dd>
+                    </dl>
+                    <dl class="condition">
+                        <dt>免許の条件等</dt>
+                        <dd>
+                            <textarea>マウントは中型車（4人乗り)に限る</textarea>
+                        </dd>
+                    </dl>
+                    <dl class="lic_class">
+                        <dt>種別</dt>
+                        <dd>
+                            <table>
+                                <tbody>
+                                    <tr>
+                                        <td>ナ<input type="text" value="100" /></td>
+                                        <td>暗<input type="text" value="100" /></td>
+                                        <td>白<input type="text" value="100" /></td>
+                                        <td>占<input type="text" value="100" /></td>
+                                        <td>モ<input type="text" value="100" /></td>
+                                        <td>忍<input type="text" value="100" /></td>
+                                        <td>リ<input type="text" value="100" /></td>
+                                        <td>魔<input type="text" value="50" /></td>
+                                        <td>機<input type="text" value="100" /></td>
+                                        <td>黒<input type="text" value="100" /></td>
+                                        <td>赤<input type="text" value="100" /></td>
+                                        <td>青<input type="text" value="80" /></td>
+                                        <td>－<input type="text" value="－" /></td>
+                                    </tr>
+                                    <tr>
+                                        <td>戦<input type="text" value="100" /></td>
+                                        <td>ガ<input type="text" value="100" /></td>
+                                        <td>学<input type="text" value="100" /></td>
+                                        <td>賢<input type="text" value="100" /></td>
+                                        <td>竜<input type="text" value="100" /></td>
+                                        <td>侍<input type="text" value="100" /></td>
+                                        <td>ヴ<input type="text" value="100" /></td>
+                                        <td>詩<input type="text" value="100" /></td>
+                                        <td>踊<input type="text" value="100" /></td>
+                                        <td>召<input type="text" value="100" /></td>
+                                        <td>ピ<input type="text" value="100" /></td>
+                                        <td>－<input type="text" value="－" /></td>
+                                        <td>－<input type="text" value="－" /></td>
+                                    </tr>
+                                </tbody>
+                            </table>
+                        </dd>
+                    </dl>
+                    <dl class="grade">
+                        <dt>優良</dt>
+                        <dd><input type="checkbox" checked="checked" /></dd>
+                        <dt>コピーライト</dt>
+                        <dd><input type="checkbox" class="copyright-check" checked="checked" /></dd>
+                    </dl>
+                    <dl class="ic">
+                        <dt>ＩＣ</dt>
+                        <dd><input type="checkbox" checked="checked" /></dd>
+                    </dl>
+                    <dl class="color">
+                        <dt>冒険者証カラー</dt>
+                        <dd>
+                            <input type="radio" id="color_green" name="color" />
+                            <label for="color_green">グリーン</label>
+                        </dd>
+                        <dd>
+                            <input type="radio" id="color_blue" name="color" />
+                            <label for="color_blue">ブルー</label>
+                        </dd>
+                        <dd>
+                            <input type="radio" id="color_gold" name="color" checked="checked" />
+                            <label for="color_gold">ゴールド</label>
+                        </dd>
+                        <dd class="color-picker-row">
+                            <div id="colorpicker"></div>
+                            <input type="text" id="color" />
+                        </dd>
+                    </dl>
+                </fieldset>
+            </form>
+        </div>
+        <script>
+            document.getElementById('saveBtn').addEventListener('click', function () {
+                var card = document.getElementById('card');
+                var photoEl = document.getElementById('photo');
+                var scale = 2;
+
+                // DOM変更前に座標・パラメータを取得
+                var savedBg = photoEl.style.backgroundImage;
+                var imgW = 0, imgH = 0, imgX = 0, imgY = 0;
+                var px = 0, py = 0, pw = 0, ph = 0;
+                if (savedBg && savedBg !== 'none') {
+                    var bgSize = photoEl.style.backgroundSize.split(' ');
+                    var bgPos  = photoEl.style.backgroundPosition.split(' ');
+                    imgW = parseFloat(bgSize[0]) * scale;
+                    imgH = parseFloat(bgSize[1]) * scale;
+                    imgX = parseFloat(bgPos[0]) * scale;
+                    imgY = parseFloat(bgPos[1]) * scale;
+                    var cardRect  = card.getBoundingClientRect();
+                    var photoRect = photoEl.getBoundingClientRect();
+                    px = (photoRect.left - cardRect.left) * scale;
+                    py = (photoRect.top  - cardRect.top)  * scale;
+                    pw = photoEl.offsetWidth  * scale;
+                    ph = photoEl.offsetHeight * scale;
+                }
+
+                photoEl.style.backgroundImage = 'none';
+
+                html2canvas(card, {
+                    scale: scale,
+                    useCORS: true,
+                    allowTaint: true,
+                    backgroundColor: '#ffffff'
+                }).then(function (canvas) {
+                    photoEl.style.backgroundImage = savedBg;
+                    try {
+                        if (savedBg && savedBg !== 'none') {
+                            var dataUrl = savedBg.replace(/^url\(['"]?/, '').replace(/['"]?\)$/, '');
+
+                            var img = new Image();
+                            img.onload = function () {
+                                var ctx = canvas.getContext('2d');
+                                ctx.save();
+                                ctx.setTransform(1, 0, 0, 1, 0, 0); // transformリセット
+                                ctx.beginPath();
+                                ctx.rect(px, py, pw, ph);
+                                ctx.clip();
+                                ctx.drawImage(img, px + imgX, py + imgY, imgW, imgH);
+                                ctx.restore();
+                                var link = document.createElement('a');
+                                link.download = 'character_card.png';
+                                link.href = canvas.toDataURL('image/png');
+                                link.click();
+                            };
+                            img.src = dataUrl;
+                        } else {
+                            var link = document.createElement('a');
+                            link.download = 'character_card.png';
+                            link.href = canvas.toDataURL('image/png');
+                            link.click();
+                        }
+                    } catch (e) {
+                        alert('ローカルサーバーで開いてください (python -m http.server 8080)');
+                    }
+                }).catch(function () {
+                    alert('保存できません。ターミナルで「python -m http.server 8080」を実行し、http://localhost:8080 で開いてください。');
+                });
+            });
+        </script>
+    </body>
 </html>
